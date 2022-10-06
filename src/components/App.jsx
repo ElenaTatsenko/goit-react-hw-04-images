@@ -1,4 +1,4 @@
-import { Component } from "react";
+import { useState, useEffect } from "react";
 import  { ToastContainer, toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { fetchItems } from '../services/api'
@@ -10,112 +10,94 @@ import  Loader  from "./Loader/Loader"
 import  ErrorView  from "./ErrorView/ErrorView";
 import PendingView from "./PendingView/PendingView";
 
+export default function App() {
+  const [items, setItems] = useState({
+    hits: [],
+    totalHits: '',
+    total: '',
+  });
+  const [imageName, setImageName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [loadMore, setLoadMore] = useState(true);
+  const [error, setError] = useState(null);
 
-
-
-export default class App extends Component {
-  state = {
-    items: {
-      hits: [],
-      totalHits: '',
-      total: '',
-    },
-    imageName: '',
-    loading: false,
-    page: 1,
-    perPage: 12,
-    loadMore: true,
-    error: null
-  }
-  handleFormSubmit = imageName => {
-    if (imageName === this.state.imageName) {
+  const handleFormSubmit = itemName => {
+    if (itemName === imageName) {
         toast.error("Enter new search value or press 'Load More' !");
         return
       }
     
-        return this.setState({
-          imageName, 
-          items: {
-            hits: [],
-            totalHits: '',
-            total: '',
-        },
-          page: 1,
-        });
-  };
+    setImageName(itemName)
+    setItems({
+        hits: [],
+        totalHits: '',
+        total: '',
+      })
+    setPage(1);     
+}
 
-  componentDidUpdate(prevProps, prevState) {
-    const { imageName, page, perPage } = this.state
-    const prevName = prevState.imageName;
-    const nextName = imageName;
-
-
-    if (prevName !== nextName ||
-      prevState.page !==  page) {
+  useEffect(() => {
+    if (imageName === '') {
+      return
+    }
+    setLoading(true)
+    setError(null)
     
-      this.setState({ loading: true, error: null, })
-
-       fetchItems(imageName, page, perPage)
-        .then(({ hits, totalHits, total }) => {
-          this.setState(prevState => ({
-            items: {
-              hits: [...prevState.items.hits, ...hits],
-              totalHits,
-              total,
-            },
-            loading: false,
-          
-          }));
-                
-
-
+    fetchItems(imageName, page)
+      .then(({ hits, totalHits, total }) => {
+        setItems(items => ({
+          hits: [...items.hits, ...hits],
+          totalHits,
+          total,
+        })
+        );
+        setLoading(false);
+        const perPage = 12;
         const totalPages = Math.ceil(totalHits / perPage);
-          
-        if (hits.length !== 0 && page === 1 ) {
+        if (hits.length !== 0 && page === 1) {
           toast.success(`Founded ${totalHits} images`);
-          this.setState({loadMore: true,})
+          setLoadMore(true);
         }
 
         if (page === totalPages) {
           toast.info("No more results");
-          this.setState({loadMore: false,})
+          setLoadMore(false);
         }
 
 
-          if (totalHits === 0) {
-            return Promise.reject(new Error(`Nothing was found according to your request ${imageName}. Try another query!`))
-          }
-        })
-        .catch(error => {
-          this.setState({ error })
-          Promise.reject(new Error(`${error.message}`))
-          toast.error(`No results for "${imageName}"! `);
-          
-        })
-    }
-  }
+        if (totalHits === 0) {
+          return Promise.reject(new Error(`Nothing was found according to your request ${imageName}. Try another query!`))
+        }
+      })
+      .catch(error => {
+        setError(error);
+        Promise.reject(new Error(`${error.message}`));
+        toast.error(`No results for "${imageName}"! `);
+      })
+  }, [page, imageName]);
 
-  loadMore = () => { this.setState(prevState => ({ page: prevState.page + 1 }));
+  const onLoadMore = () => {
+      setPage(prevPage => prevPage + 1 );
   };
 
 
-  render() {
-    return (
+     return (
       <>
-        <Searchbar onSubmit={this.handleFormSubmit}></Searchbar>
+        <Searchbar onSubmit={handleFormSubmit}></Searchbar>
 
-        {this.state.items.hits.length !== 0 && <>
-          <ImageGallery items={this.state.items.hits} />
-          {this.state.loadMore && <Button onClick={this.loadMore} />}
-          {this.state.items.hits.length === 0 && !this.state.loading && <PendingView />}
-          {this.state.loading && <Loader />}
+        {items.hits.length !== 0 && <>
+          <ImageGallery items={items.hits} />
+          {loadMore && <Button onClick={onLoadMore} />}
+          {items.hits.length === 0 && !loading && <PendingView />}
+          {loading && <Loader />}
         </>}
         
-      {this.state.error && <ErrorView errorName={this.state.error.message} />}
+      {error && <ErrorView errorName={error.message} />}
        <ToastContainer autoClose={2000} />
     </>
   );
   }
-  
-};
-    
+
+ 
+

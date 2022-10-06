@@ -10,11 +10,12 @@ export default function Modal({onClose, children}) {
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [])
+    }, );
     
     const handleKeyDown = (event) => {
         if (event.code === 'Escape') {
             onClose();
+        console.log('esc')
 
         }
     };
